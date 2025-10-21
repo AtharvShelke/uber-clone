@@ -1,94 +1,75 @@
 import { Tabs } from 'expo-router';
-import { icons } from '@/constants';
 import { Image, ImageSourcePropType, View } from 'react-native';
+import { icons } from '@/constants';
 
-const TabIcon = ({
-  source,
-  focused,
-}: {
-  source: ImageSourcePropType;
+interface TabIconProps {
   focused: boolean;
-}) => (
-  <View
-    className={`flex flex-row justify-center items-center rounded-full ${focused ? 'bg-general-300' : ''}`}
-  >
-    <View
-      className={`rounded-full w-12 h-12 items-center justify-center ${focused ? 'bg-general-400' : ''}`}
-    >
-      <Image
-        source={source}
-        tintColor="white"
-        resizeMode="contain"
+  source: ImageSourcePropType;
+  color: string;
+}
+
+const TabIcon = ({ focused, source, color }: TabIconProps) => (
+  <View className={`flex-row justify-center items-center rounded-full ${focused ? 'bg-general-300' : ''}`}>
+    <View className={`rounded-full w-12 h-12 items-center justify-center ${focused ? 'bg-general-400' : ''}`}>
+      <Image 
+        source={source} 
+        tintColor={color}
+        resizeMode="contain" 
         className="w-7 h-7"
       />
     </View>
   </View>
 );
 
+const TAB_SCREENS = [
+  { name: 'home', title: 'Home', icon: icons.home },
+  { name: 'rides', title: 'Rides', icon: icons.list },
+  { name: 'chat', title: 'Chat', icon: icons.chat },
+  { name: 'profile', title: 'Profile', icon: icons.profile },
+] as const;
+
 export default function TabsLayout() {
   return (
-    <Tabs
-      initialRouteName="home"
+    <Tabs 
+      initialRouteName="home" 
       screenOptions={{
         tabBarActiveTintColor: 'white',
-        tabBarInactiveTintColor: 'white',
+        tabBarInactiveTintColor: '#9CA3AF',
+        headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: '#333333',
           borderRadius: 50,
-          paddingBottom: 0,
           overflow: 'hidden',
           marginHorizontal: 20,
-          marginBottom: 20,
-          height: 78,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexDirection: 'row',
+          marginBottom: 25,
+          
           position: 'absolute',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          display:"flex",
+          flexDirection:"row",
+          justifyContent:"space-evenly",
+          
+        },
+        tabBarItemStyle: {
+          height: 58,
         },
       }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.home} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="rides"
-        options={{
-          title: 'Rides',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.list} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Chat',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.chat} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.profile} focused={focused} />
-          ),
-        }}
-      />
+      {TAB_SCREENS.map(({ name, title, icon }) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          options={{
+            title,
+            tabBarIcon: ({ focused, color }) => (
+              <TabIcon focused={focused} source={icon} color={color} />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
