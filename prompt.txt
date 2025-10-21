@@ -1,0 +1,393 @@
+app/_layout.tsx:
+import "../global.css";
+import 'react-native-reanimated';
+import { ClerkProvider } from '@clerk/clerk-expo'
+import { tokenCache } from '@clerk/clerk-expo/token-cache'
+
+
+import { Stack, SplashScreen } from 'expo-router';
+import { useFonts } from 'expo-font';
+import { useEffect } from 'react';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [loaded, error] = useFonts({
+    'Jakarta-Bold': require('../assets/fonts/PlusJakartaSans-Bold.ttf'),
+    'Jakarta-ExtraBold': require('../assets/fonts/PlusJakartaSans-ExtraBold.ttf'),
+    'Jakarta-ExtraLight': require('../assets/fonts/PlusJakartaSans-ExtraLight.ttf'),
+    'Jakarta-Light': require('../assets/fonts/PlusJakartaSans-Light.ttf'),
+    'Jakarta-Medium': require('../assets/fonts/PlusJakartaSans-Medium.ttf'),
+    'Jakarta-Regular': require('../assets/fonts/PlusJakartaSans-Regular.ttf'),
+    'Jakarta-SemiBold': require('../assets/fonts/PlusJakartaSans-SemiBold.ttf'),
+  });
+
+  useEffect(() => {
+    if (loaded || error) SplashScreen.hideAsync();
+  }, [loaded, error]);
+
+  if (!loaded && !error) return null;
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+  return (
+    <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
+      <Stack>
+        <Stack.Screen name="splash" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(root)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      </Stack>
+    </ClerkProvider>
+  );
+}
+
+app/index.tsx:
+import { Redirect } from "expo-router";
+import { Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const App = () => {
+    return <Redirect href={"/(auth)/welcome"}/>
+}
+
+export default App;
+
+/(auth)/_layout.tsx:
+import { Redirect, Stack } from "expo-router"
+import { useAuth } from '@clerk/clerk-expo'
+
+const Layout = () => {
+  const { isSignedIn } = useAuth()
+   if (isSignedIn) {
+    return <Redirect href={'/'} />
+  }
+  return (
+   <Stack>
+    <Stack.Screen name="welcome" options={{headerShown:false}}/>
+    <Stack.Screen name="sign-up" options={{headerShown:false}}/>
+    <Stack.Screen name="sign-in" options={{headerShown:false}}/>
+   </Stack>
+  )
+}
+
+export default Layout
+
+/(auth)/welcome:
+import CustomButton from '@/components/CustomButton';
+import { onboarding } from '@/constants';
+import { router } from 'expo-router';
+import React, { useRef, useState } from 'react';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Swiper from 'react-native-swiper';
+const Welcome = () => {
+  const swiperRef = useRef<Swiper>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const isLastSlide = activeIndex === onboarding.length - 1;
+  return (
+    <SafeAreaView className='flex h-full items-center justify-between bg-white'>
+      <TouchableOpacity
+        onPress={() => {
+          router.replace('/(auth)/sign-up')
+        }}
+        className='w-full flex justify-end items-end p-5'
+      >
+        <Text className='text-black text-md font-JakartaBold'>Skip</Text>
+      </TouchableOpacity>
+      <Swiper
+        ref={swiperRef}
+        loop={false}
+        dot={
+          <View className='w-[32px] h-[4px] mx-1 bg-[#E2E8F0] rounded-full' />
+        }
+        activeDot={
+          <View className='w-[32px] h-[4px] mx-1 bg-[#0286FF] rounded-full' />
+        }
+        onIndexChanged={(index) => setActiveIndex(index)}
+      >
+        {onboarding.map((item) => (
+          <View key={item.id} className='flex-1 justify-center items-center px-10'>
+            <Image source={item.image} className='w-full h-[300px]' resizeMode='contain' />
+            <View className='flex flex-row items-center justify-center w-full mt-10'>
+              <Text className='text-black text-3xl font-bold mx-10 text-center'>{item.title}</Text>
+            </View>
+            <Text className='text-lg font-JakartaSemiBold text-center text-[#858585] mx-10 mt-3'>{item.description}</Text>
+          </View>
+        ))}
+      </Swiper>
+      <CustomButton
+        title={isLastSlide ? "Get Started" : "Next"}
+        className='w-11/12 mt-10 mb-10'
+        onPress={() => isLastSlide ? router.replace('/(auth)/sign-up') : swiperRef.current?.scrollBy(1)}
+      />
+    </SafeAreaView>
+  )
+}
+
+export default Welcome
+
+/(auth)/sign-up.tsx:
+import { View, Text, ScrollView, Image, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { icons, images } from '@/constants';
+import InputField from '@/components/InputField';
+import CustomButton from '@/components/CustomButton';
+import { Link, useRouter } from 'expo-router';
+import OAuth from '@/components/OAuth';
+import { useSignUp } from '@clerk/clerk-expo';
+
+const SignUp = () => {
+  const { isLoaded, signUp, setActive } = useSignUp();
+  const router = useRouter();
+
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+  });
+
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const onSignup = async () => {
+    if (!isLoaded || loading) return;
+
+    // Basic client-side validation
+    if (!form.email || !form.password) {
+      Alert.alert('Missing info', 'Email and password are required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Clerk expects emailAddress/password keys; optionally send firstName
+      await signUp.create({
+        emailAddress: form.email,
+        password: form.password,
+        firstName: form.name || undefined,
+      });
+
+      // Send email verification code
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
+      setPendingVerification(true);
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage || 'Sign up failed. Please try again.';
+      Alert.alert('Sign up error', msg);
+      console.error('SignUp error:', JSON.stringify(err, null, 2));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onVerifyPress = async () => {
+    if (!isLoaded || loading) return;
+
+    if (!code) {
+      Alert.alert('Missing code', 'Enter the verification code sent to your email.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
+
+      if (signUpAttempt.status === 'complete') {
+        await setActive({ session: signUpAttempt.createdSessionId });
+        router.replace('/(root)/(tabs)/home');
+      } else {
+        // Could be needs_second_factor or other next steps depending on your Clerk settings
+        Alert.alert('Verification incomplete', 'Please complete the remaining steps.');
+        console.warn('SignUp not complete:', JSON.stringify(signUpAttempt, null, 2));
+      }
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage || 'Invalid verification code.';
+      Alert.alert('Verification error', msg);
+      console.error('Verify error:', JSON.stringify(err, null, 2));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (pendingVerification) {
+    return (
+      <View style={{ flex: 1, padding: 20, justifyContent: 'center' }}>
+        <Text style={{ fontSize: 20, marginBottom: 12 }}>Verify your email</Text>
+        <TextInput
+          value={code}
+          placeholder="Enter your verification code"
+          onChangeText={setCode}
+          keyboardType="number-pad"
+          style={{ borderWidth: 1, borderColor: '#ccc', padding: 12, borderRadius: 8, marginBottom: 12 }}
+        />
+        <TouchableOpacity onPress={onVerifyPress} disabled={loading} style={{ backgroundColor: '#4f46e5', padding: 14, borderRadius: 8 }}>
+          <Text style={{ color: 'white', textAlign: 'center' }}>{loading ? 'Verifying...' : 'Verify'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView className="flex-1 bg-white">
+      <View className="flex-1 bg-white">
+        <View className="relative w-full h-[250px]">
+          <Image source={images.signUpCar} className="z-0 w-full h-[250px]" />
+          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-5 left-5">Create Your Account</Text>
+        </View>
+
+        <View className="p-5">
+          <InputField
+            label="Name"
+            placeholder="Enter your name"
+            icon={icons.person}
+            value={form.name}
+            onChangeText={(value) => setForm({ ...form, name: value })}
+          />
+          <InputField
+            label="Email"
+            placeholder="Enter your email"
+            icon={icons.email}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={form.email}
+            onChangeText={(value) => setForm({ ...form, email: value.trim() })}
+          />
+          <InputField
+            label="Password"
+            placeholder="Enter your password"
+            icon={icons.lock}
+            secureTextEntry
+            value={form.password}
+            onChangeText={(value) => setForm({ ...form, password: value })}
+          />
+
+          <CustomButton title={loading ? 'Creating account...' : 'Sign up'} className="mt-6" onPress={onSignup} disabled={loading} />
+
+          <OAuth />
+
+          <Link href="/sign-in" className="text-lg text-center text-general-200 mt-10">
+            <Text>Already have an account? </Text>
+            <Text className="text-primary-500">Log In</Text>
+          </Link>
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
+
+export default SignUp;
+
+/(auth)/sign-in.tsx:
+import { View, Text, ScrollView, Image, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { icons, images } from '@/constants';
+import InputField from '@/components/InputField';
+import CustomButton from '@/components/CustomButton';
+import { Link, useRouter } from 'expo-router';
+import OAuth from '@/components/OAuth';
+import { useSignIn } from '@clerk/clerk-expo';
+
+const SignIn = () => {
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const router = useRouter();
+
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+  });
+  const [loading, setLoading] = useState(false);
+
+  const onSignIn = async () => {
+    if (!isLoaded || loading) return;
+
+    if (!form.email || !form.password) {
+      Alert.alert('Missing info', 'Email and password are required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const signInAttempt = await signIn.create({
+        identifier: form.email.trim(),
+        password: form.password,
+      });
+
+      if (signInAttempt.status === 'complete') {
+        await setActive({ session: signInAttempt.createdSessionId });
+        router.replace('/(root)/(tabs)/home');
+      } else {
+        Alert.alert('Action needed', 'Sign-in incomplete. Please complete the remaining steps.');
+        console.warn('Sign-in not complete:', JSON.stringify(signInAttempt, null, 2));
+      }
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage || 'Unable to sign in. Check your credentials and try again.';
+      Alert.alert('Sign-in error', msg);
+      console.error('SignIn error:', JSON.stringify(err, null, 2));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ScrollView className="flex-1 bg-white">
+      <View className="flex-1 bg-white">
+        <View className="relative w-full h-[250px]">
+          <Image source={images.signUpCar} className="z-0 w-full h-[250px]" />
+          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-5 left-5">Welcome</Text>
+        </View>
+
+        <View className="p-5">
+          <InputField
+            label="Email"
+            placeholder="Enter your email"
+            icon={icons.email}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={form.email}
+            onChangeText={(value) => setForm({ ...form, email: value })}
+          />
+
+          <InputField
+            label="Password"
+            placeholder="Enter your password"
+            icon={icons.lock}
+            secureTextEntry
+            value={form.password}
+            onChangeText={(value) => setForm({ ...form, password: value })}
+          />
+
+          <CustomButton title={loading ? 'Signing in...' : 'Sign In'} className="mt-6" onPress={onSignIn} disabled={loading} />
+
+          <OAuth />
+
+          <Link href="/sign-up" className="text-lg text-center text-general-200 mt-10">
+            <Text>Don't have an account? </Text>
+            <Text className="text-primary-500">Sign Up</Text>
+          </Link>
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
+
+export default SignIn;
+
+/(root)/_layout.tsx:
+empty
+
+/(root)/(tabs)/_layout.tsx:
+empty
+
+/(root)/(tabs)/home.tsx:
+import { View, Text } from 'react-native'
+import React from 'react'
+
+const Home = () => {
+  return (
+    <View>
+      <Text>Home</Text>
+    </View>
+  )
+}
+
+export default Home

@@ -1,9 +1,19 @@
+import { useAuth } from "@clerk/clerk-expo";
 import { Redirect } from "expo-router";
-import { Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 const App = () => {
-    return <Redirect href={"/(auth)/welcome"}/>
+    const { isSignedIn, isLoaded } = useAuth()
+  
+  // Wait for Clerk to load
+  if (!isLoaded) {
+    return null; // Or a loading spinner
+  }
+  
+  // If signed in, redirect to home
+  if (isSignedIn) {
+    return <Redirect href="/(root)/(tabs)/home" />
+  }
+    return <Redirect href="/(auth)/welcome" />
 }
 
 export default App;
