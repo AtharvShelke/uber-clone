@@ -32,7 +32,8 @@
         {
           "origin": "https://uber.dev/"
         }
-      ]
+      ],
+      "expo-maps"
     ],
     "experiments": {
       "typedRoutes": true
