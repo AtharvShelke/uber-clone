@@ -8,6 +8,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 const DRIVERS = [
   {
+    "id": 1,
     "driver_id": 1,
     "first_name": "James",
     "last_name": "Wilson",
@@ -17,6 +18,7 @@ const DRIVERS = [
     "rating": 4.80
   },
   {
+    "id": 2,
     "driver_id": 2,
     "first_name": "David",
     "last_name": "Brown",
@@ -26,6 +28,7 @@ const DRIVERS = [
     "rating": 4.60
   },
   {
+    "id": 3,
     "driver_id": 3,
     "first_name": "Michael",
     "last_name": "Johnson",
@@ -35,6 +38,7 @@ const DRIVERS = [
     "rating": 4.70
   },
   {
+    "id": 4,
     "driver_id": 4,
     "first_name": "Robert",
     "last_name": "Green",
@@ -52,7 +56,7 @@ const Map = () => {
     destinationLatitude,
     destinationLongitude
   } = useLocationStore();
-  const { selectedDriver, setSelectedDriver } = useDriverStore();
+  const { selectedDriver, setDrivers } = useDriverStore();
   const [marker, setMarker] = useState<MarkerData[]>([]);
   const region = calculateRegion({
     userLatitude,
@@ -61,6 +65,7 @@ const Map = () => {
     destinationLongitude
   })
   useEffect(() => {
+    setDrivers(DRIVERS)
     if (Array.isArray(DRIVERS)) {
       if (!userLatitude || !userLongitude) {
         return;
